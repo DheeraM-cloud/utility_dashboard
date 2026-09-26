@@ -1,0 +1,21 @@
+{
+  "name": "pudukkottai-utility-gis-mongo",
+  "version": "1.0.0",
+  "description": "Pudukkottai Municipality Utility GIS — Node/Express + MongoDB Atlas backend, static frontend, Excel import script.",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "node --watch src/server.js",
+    "import": "node scripts/import.js"
+  },
+  "dependencies": {
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2",
+    "mongoose": "^8.5.0",
+    "proj4": "^2.11.0",
+    "xlsx": "^0.18.5"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

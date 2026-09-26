@@ -1,0 +1,476 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Pudukkottai Utility GIS — Field Sheet</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
+<style>
+  :root{
+    --navy-deep:#F6F8FA;
+    --navy:#FFFFFF;
+    --grid-line:#DDE3EA;
+    --cyan:#1F6E96;
+    --cyan-dim:#5A87A0;
+    --amber:#B5701A;
+    --amber-dim:#DDB98A;
+    --ink:#182430;
+    --ink-dim:#5B6B7A;
+  }
+
+  *{ box-sizing:border-box; }
+  html,body{ margin:0; padding:0; background:var(--navy-deep); color:var(--ink); font-family:'Segoe UI',Arial,sans-serif; }
+  body{
+    background:
+      radial-gradient(1100px 620px at 12% -8%, rgba(31,110,150,0.06), transparent 60%),
+      radial-gradient(900px 520px at 100% 0%, rgba(38,128,173,0.05), transparent 55%),
+      var(--navy-deep);
+  }
+  .mono{ font-family:'Courier New', Courier, monospace; }
+  a{ color:var(--cyan); }
+
+  .sheet{ max-width:1180px; margin:0 auto; padding:28px 24px 80px; }
+  @media (max-width:480px){ .sheet{ padding:16px 12px 60px; } }
+
+  .hero{
+    border:1px solid var(--grid-line);
+    background:#FFFFFF;
+    box-shadow:0 1px 3px rgba(24,36,48,0.06);
+    padding:28px 28px 20px;
+    position:relative;
+    margin-bottom:18px;
+  }
+  .eyebrow{
+    font-family:'Courier New', monospace; font-size:11px; letter-spacing:0.25em;
+    color:var(--cyan); text-transform:uppercase; margin-bottom:10px;
+  }
+  h1{
+    font-family:'Courier New', monospace; font-weight:700; font-size:clamp(28px,5vw,44px);
+    letter-spacing:0.04em; margin:0 0 6px; text-transform:uppercase;
+  }
+  .hero p.sub{ color:var(--ink-dim); max-width:640px; font-size:14.5px; line-height:1.55; margin:0 0 20px; }
+  @media (max-width:480px){
+    .hero{ padding:18px 16px 14px; }
+    .eyebrow{ font-size:9.5px; letter-spacing:0.14em; }
+    .hero p.sub{ font-size:13.5px; }
+  }
+
+  .titleblock{ display:grid; grid-template-columns:repeat(5,1fr); border-top:1px solid var(--grid-line); margin-top:14px; }
+  .titleblock .cell{ border-right:1px solid var(--grid-line); padding:10px 14px; }
+  .titleblock .cell:last-child{ border-right:none; }
+  .titleblock .label{ font-family:'Courier New', monospace; font-size:9.5px; letter-spacing:0.15em; text-transform:uppercase; color:var(--cyan-dim); margin-bottom:4px; }
+  .titleblock .value{ font-family:'Courier New', monospace; font-size:20px; font-weight:700; }
+  .titleblock .value small{ font-size:11px; color:var(--ink-dim); font-weight:400; }
+  @media (max-width:600px){
+    .titleblock{ grid-template-columns:repeat(2,1fr); }
+    .titleblock .cell{ border-right:1px solid var(--grid-line); border-bottom:1px solid var(--grid-line); padding:9px 10px; }
+    .titleblock .cell:nth-child(even){ border-right:none; }
+    .titleblock .cell:last-child{ border-right:none; border-bottom:none; }
+    .titleblock .value{ font-size:17px; }
+  }
+
+  .section-head{ display:flex; align-items:baseline; gap:10px; margin:38px 0 14px; }
+  .section-head .tag{ font-family:'Courier New', monospace; font-size:11px; color:#FFFFFF; background:var(--cyan); padding:2px 7px; letter-spacing:0.1em; }
+  .section-head h2{ font-family:'Courier New', monospace; font-size:16px; letter-spacing:0.08em; text-transform:uppercase; margin:0; }
+  .section-head .rule{ flex:1; height:1px; background:var(--grid-line); }
+  .section-note{ color:var(--ink-dim); font-size:13.5px; line-height:1.6; margin:-6px 0 16px; max-width:760px; }
+
+  .panel{ border:1px solid var(--grid-line); background:#FFFFFF; padding:16px; }
+  .map-layout{ display:grid; grid-template-columns: 230px 1fr; gap:14px; }
+  @media (max-width:760px){
+    .map-layout{ grid-template-columns:1fr; }
+    .map-layout > div:first-child{ order:1; }
+    #map{ order:2; }
+    .layer-list{ flex-direction:row; overflow-x:auto; -webkit-overflow-scrolling:touch; padding-bottom:4px; scrollbar-width:thin; }
+    .layer-item{ flex:0 0 auto; white-space:nowrap; padding:9px 10px; }
+    .ward-select-wrap{ margin-top:10px; }
+  }
+  #map{ height:min(520px, 62vh); width:100%; background:#EEF1F4; border:1px solid var(--grid-line); }
+  @media (max-width:480px){ #map{ height:340px; } }
+
+  .layer-list{ display:flex; flex-direction:column; gap:6px; }
+  .layer-item{ display:flex; align-items:center; gap:8px; font-family:'Courier New',monospace; font-size:12.5px; padding:7px 8px; border:1px solid var(--grid-line); cursor:pointer; user-select:none; background:#F9FAFB; }
+  .layer-item:hover{ border-color:var(--cyan-dim); }
+  .layer-item.off{ opacity:0.4; }
+  .swatch{ width:11px; height:11px; flex:none; border-radius:2px; }
+  .layer-count{ margin-left:auto; color:var(--ink-dim); }
+
+  select{ width:100%; background:#F9FAFB; color:var(--ink); border:1px solid var(--grid-line); padding:9px 8px; font-family:'Courier New',monospace; font-size:13px; }
+
+  .ward-select-wrap{ margin-top:16px; }
+  .ward-select-wrap label{ display:block; font-family:'Courier New',monospace; font-size:10px; letter-spacing:0.15em; text-transform:uppercase; color:var(--cyan-dim); margin-bottom:6px; }
+  .ward-select-row{ display:flex; gap:8px; }
+  .ward-select-row select{ flex:1; min-width:0; }
+  .reset-btn{ flex:none; background:transparent; color:var(--cyan); border:1px solid var(--cyan-dim); padding:7px 12px; font-family:'Courier New',monospace; font-size:11px; letter-spacing:0.1em; text-transform:uppercase; cursor:pointer; white-space:nowrap; }
+  .reset-btn:hover{ background:rgba(31,110,150,0.08); }
+
+  .stats{ display:grid; grid-template-columns:repeat(7,1fr); gap:1px; background:var(--grid-line); border:1px solid var(--grid-line); }
+  @media (max-width:760px){ .stats{ grid-template-columns:repeat(3,1fr);} }
+  @media (max-width:420px){
+    .stats{ grid-template-columns:repeat(2,1fr); }
+    .stat:last-child:nth-child(odd){ grid-column: span 2; }
+  }
+  .stat{ background:#FFFFFF; padding:14px 10px; text-align:left; }
+  .stat .n{ font-family:'Courier New',monospace; font-size:22px; font-weight:700; }
+  .stat .l{ font-size:10.5px; color:var(--ink-dim); text-transform:uppercase; letter-spacing:0.08em; margin-top:2px;}
+
+  .chart-wrap{ overflow-x:auto; -webkit-overflow-scrolling:touch; }
+  .bar-label{ font-family:'Courier New',monospace; font-size:10px; fill:var(--ink-dim); }
+
+  .insight-tabs{ display:flex; flex-wrap:wrap; gap:8px; margin-bottom:14px; }
+  .insight-tab{
+    font-family:'Courier New',monospace; font-size:11.5px; letter-spacing:0.06em; text-transform:uppercase;
+    color:var(--ink-dim); background:#FFFFFF; border:1px solid var(--grid-line); border-left:3px solid var(--grid-line);
+    padding:10px 14px; cursor:pointer; transition:border-color .15s, color .15s, background .15s;
+  }
+  .insight-tab:hover{ border-color:var(--amber-dim); color:var(--ink); }
+  .insight-tab.active{ border-color:var(--amber-dim); border-left:3px solid var(--amber); color:var(--amber); background:#FFFDF8; font-weight:700; }
+
+  .insight-detail{ min-height:150px; }
+  .insight-detail .flag{ font-family:'Courier New',monospace; font-size:10px; color:var(--amber); letter-spacing:0.15em; text-transform:uppercase; margin-bottom:8px; display:block; }
+  .insight-detail h3{ margin:0 0 8px; font-size:17px; }
+  .insight-detail p{ margin:0 0 14px; font-size:13.5px; line-height:1.65; color:var(--ink-dim); max-width:680px; }
+  .insight-detail .placeholder{ color:var(--ink-dim); font-size:13.5px; font-style:italic; }
+  .ward-chips{ display:flex; flex-wrap:wrap; gap:6px; }
+  .ward-chip{ font-family:'Courier New',monospace; font-size:11.5px; border:1px solid var(--amber-dim); color:var(--amber); padding:3px 9px; cursor:pointer; opacity:0; transform:translateY(4px); animation:chipIn .28s ease forwards; }
+  .ward-chip:hover{ background:rgba(181,112,26,0.1); }
+  @keyframes chipIn{ to{ opacity:1; transform:translateY(0); } }
+  @keyframes fadeIn{ from{ opacity:0; transform:translateY(6px); } to{ opacity:1; transform:translateY(0); } }
+  .insight-body{ animation:fadeIn .25s ease; }
+
+  @media (max-width:480px){
+    .insight-tab{ padding:11px 13px; font-size:11px; }
+    .ward-chip{ padding:6px 11px; font-size:12px; }
+    .layer-item{ font-size:12px; }
+  }
+
+  .insight-loading{ display:flex; align-items:center; gap:10px; font-family:'Courier New',monospace; font-size:12px; letter-spacing:0.1em; text-transform:uppercase; color:var(--amber); padding:4px 0; }
+  .insight-loading .bar{ position:relative; flex:1; max-width:220px; height:3px; background:var(--grid-line); overflow:hidden; }
+  .insight-loading .bar::after{ content:""; position:absolute; left:0; top:0; bottom:0; width:40%; background:var(--amber); animation:scan 1s ease-in-out forwards; }
+  @keyframes scan{ 0%{ left:-40%; } 100%{ left:100%; } }
+
+  .load-banner{ font-family:'Courier New',monospace; font-size:12.5px; color:var(--ink-dim); padding:10px 0; }
+  .error-banner{ font-family:'Courier New',monospace; font-size:12.5px; color:#B23A2E; padding:10px 0; }
+
+  footer{ margin-top:50px; padding-top:16px; border-top:1px solid var(--grid-line); font-size:11.5px; color:var(--ink-dim); display:flex; justify-content:space-between; flex-wrap:wrap; gap:8px; }
+
+  .leaflet-popup-content-wrapper{ background:#FFFFFF; color:var(--ink); border-radius:2px; box-shadow:0 2px 8px rgba(24,36,48,0.18); }
+  .leaflet-popup-tip{ background:#FFFFFF; }
+  .leaflet-popup-content{ font-family:'Courier New',monospace; font-size:12px; }
+  .leaflet-container{ background:#EEF1F4; }
+</style>
+</head>
+<body>
+
+<div class="sheet">
+
+  <div class="hero">
+    <div class="eyebrow">Municipal Engineering &middot; Ward Infrastructure Survey</div>
+    <h1>Pudukkottai Utility GIS</h1>
+    <p class="sub">A field sheet served live from a Postgres-backed API — every point below is fetched from the database, not baked into this page. Cross-checked for coverage gaps that matter to planning: lighting, drainage, water access, and transformer load.</p>
+
+    <div class="titleblock">
+      <div class="cell"><div class="label">Assets Mapped</div><div class="value" id="tb-total">—</div></div>
+      <div class="cell"><div class="label">Wards Covered</div><div class="value" id="tb-wards">—</div></div>
+      <div class="cell"><div class="label">Asset Classes</div><div class="value" id="tb-classes">—</div></div>
+      <div class="cell"><div class="label">Data Source</div><div class="value" style="font-size:14px">Live API</div></div>
+      <div class="cell"><div class="label">Sheet</div><div class="value">01 <small>of 01</small></div></div>
+    </div>
+  </div>
+
+  <div id="loadBanner" class="load-banner">Loading data from the API…</div>
+  <div class="stats" id="statStrip"></div>
+
+  <div class="section-head"><span class="tag">01</span><h2>Asset Map</h2><div class="rule"></div></div>
+  <p class="section-note">Toggle a layer to isolate one utility class, or pick a ward to zoom straight to its footprint.</p>
+
+  <div class="panel">
+    <div class="map-layout">
+      <div>
+        <div class="layer-list" id="layerList"></div>
+        <div class="ward-select-wrap">
+          <label>Jump to ward</label>
+          <div class="ward-select-row">
+            <select id="wardSelect"><option value="">All wards</option></select>
+            <button class="reset-btn" id="resetBtn">Reset</button>
+          </div>
+        </div>
+      </div>
+      <div id="map"></div>
+    </div>
+  </div>
+
+  <div class="section-head"><span class="tag">02</span><h2>Assets per Ward</h2><div class="rule"></div></div>
+  <p class="section-note">Total mapped assets by ward, stacked by category. Click a bar to jump to that ward.</p>
+  <div class="panel chart-wrap"><svg id="wardChart"></svg></div>
+
+  <div class="section-head"><span class="tag">03</span><h2>Field Notes — Coverage Gaps</h2><div class="rule"></div></div>
+  <p class="section-note">Four outcomes computed live by the API from whatever is currently in the database — click one to see the finding.</p>
+
+  <div class="insight-tabs" id="insightTabs"></div>
+  <div class="panel insight-detail" id="insightDetail"></div>
+
+  <footer>
+    <span>Source: Pudukkottai Municipality Utility GIS dataset — served from <span class="mono" id="apiBaseLabel">/api</span>.</span>
+    <span>Coordinates reprojected UTM Zone 44N &rarr; WGS84 at import time.</span>
+  </footer>
+
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script>
+// Same-origin by default. If you deploy the frontend separately from the
+// API (e.g. frontend on Vercel, API on Render), set this to the API's
+// full URL, e.g. window.API_BASE = 'https://your-api.onrender.com'
+const API_BASE = window.API_BASE || '';
+document.getElementById('apiBaseLabel').textContent = API_BASE ? API_BASE + '/api' : '/api';
+
+const CATS = {
+  Streetlight: {color:'#D99A1E', label:'Streetlights'},
+  Manhole:     {color:'#6B7785', label:'Manholes'},
+  Transformer: {color:'#D64B2B', label:'Transformers'},
+  Water:       {color:'#2680AD', label:'Water points'},
+  Waste:       {color:'#5E8A3B', label:'Waste bins'},
+  Structure:   {color:'#7C4FC2', label:'Structures'},
+  Landmark:    {color:'#B4207A', label:'Landmarks'},
+};
+const CHART_ORDER = ['Streetlight','Manhole','Transformer','Water','Waste','Structure','Landmark'];
+
+async function fetchJSON(path){
+  const res = await fetch(API_BASE + path);
+  if(!res.ok) throw new Error(`${path} -> HTTP ${res.status}`);
+  return res.json();
+}
+
+let POINTS = [];
+let WARD_STATS = [];
+let activeLayers = new Set(Object.keys(CATS));
+let map, canvasRenderer, markerLayer;
+
+async function init(){
+  let banner = document.getElementById('loadBanner');
+  try{
+    const [stats, wards, points, insightsData] = await Promise.all([
+      fetchJSON('/api/stats'),
+      fetchJSON('/api/wards'),
+      fetchJSON('/api/assets'),
+      fetchJSON('/api/insights'),
+    ]);
+
+    if(banner){ banner.remove(); banner = null; }
+    WARD_STATS = wards;
+    POINTS = points;
+
+    renderTitleBlock(stats);
+    renderStatStrip(stats);
+    renderLayerList(stats);
+
+    try{
+      initMap();
+      renderWardSelect();
+      renderMarkers();
+    } catch(mapErr){
+      console.error('Map failed to load:', mapErr);
+      document.getElementById('map').outerHTML =
+        `<div class="error-banner" style="padding:20px;border:1px solid var(--grid-line)">Map couldn't load (often a blocked CDN or offline connection) — the rest of the dashboard still works below.</div>`;
+    }
+
+    renderWardChart();
+    renderInsightTabs(insightsData);
+  } catch(err){
+    console.error(err);
+    const msg = `Couldn't reach the API (${err.message}). Is the backend running and is DATABASE_URL set?`;
+    if(banner) banner.outerHTML = `<div class="error-banner">${msg}</div>`;
+    else document.querySelector('.sheet').insertAdjacentHTML('afterbegin', `<div class="error-banner">${msg}</div>`);
+  }
+}
+
+function renderTitleBlock(stats){
+  document.getElementById('tb-total').textContent = stats.total.toLocaleString();
+  document.getElementById('tb-wards').textContent = stats.wards;
+  document.getElementById('tb-classes').textContent = stats.categories.length;
+}
+
+function renderStatStrip(stats){
+  const strip = document.getElementById('statStrip');
+  const byCategory = Object.fromEntries(stats.categories.map(c=>[c.category, c.count]));
+  CHART_ORDER.forEach(c=>{
+    const count = byCategory[c] || 0;
+    const d = document.createElement('div');
+    d.className='stat';
+    d.innerHTML = `<div class="n" style="color:${CATS[c].color}">${count.toLocaleString()}</div><div class="l">${CATS[c].label}</div>`;
+    strip.appendChild(d);
+  });
+}
+
+function renderLayerList(stats){
+  const byCategory = Object.fromEntries(stats.categories.map(c=>[c.category, c.count]));
+  const layerList = document.getElementById('layerList');
+  Object.keys(CATS).forEach(c=>{
+    const row = document.createElement('div');
+    row.className='layer-item';
+    row.innerHTML = `<span class="swatch" style="background:${CATS[c].color}"></span><span>${CATS[c].label}</span><span class="layer-count">${byCategory[c]||0}</span>`;
+    row.addEventListener('click', ()=>{
+      if(activeLayers.has(c)){ activeLayers.delete(c); row.classList.add('off'); }
+      else{ activeLayers.add(c); row.classList.remove('off'); }
+      renderMarkers();
+    });
+    layerList.appendChild(row);
+  });
+}
+
+function initMap(){
+  map = L.map('map', {preferCanvas:true}).setView([10.3830,78.8182], 14);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    maxZoom:19, attribution:'&copy; OpenStreetMap contributors'
+  }).addTo(map);
+  canvasRenderer = L.canvas({ padding: 0.5 });
+  markerLayer = L.layerGroup().addTo(map);
+}
+
+function renderMarkers(wardFilter){
+  markerLayer.clearLayers();
+  POINTS.forEach(p=>{
+    if(!activeLayers.has(p.category)) return;
+    if(wardFilter && p.ward!==wardFilter) return;
+    const m = L.circleMarker([p.lat,p.lon], {
+      renderer: canvasRenderer, radius:3.2,
+      color: CATS[p.category] ? CATS[p.category].color : '#333',
+      weight:0, fillOpacity:0.85,
+    });
+    m.bindPopup(`<b>${p.category}</b><br>Ward ${p.ward}<br>${p.lat.toFixed(5)}, ${p.lon.toFixed(5)}`);
+    markerLayer.addLayer(m);
+  });
+}
+
+function renderWardSelect(){
+  const wardSelect = document.getElementById('wardSelect');
+  WARD_STATS.forEach(w=>{
+    const opt = document.createElement('option');
+    opt.value=w.WARD_NO; opt.textContent='Ward '+w.WARD_NO;
+    wardSelect.appendChild(opt);
+  });
+  wardSelect.addEventListener('change', ()=>{
+    const w = wardSelect.value ? parseInt(wardSelect.value) : null;
+    if(w){
+      const ws = WARD_STATS.find(x=>x.WARD_NO===w);
+      if(ws) map.fitBounds([[ws.minLat,ws.minLon],[ws.maxLat,ws.maxLon]], {padding:[30,30]});
+      renderMarkers(w);
+    } else renderMarkers();
+  });
+  document.getElementById('resetBtn').addEventListener('click', ()=>{
+    wardSelect.value='';
+    map.setView([10.3830,78.8182], 14);
+    renderMarkers();
+  });
+}
+
+function jumpToWard(w){
+  const wardSelect = document.getElementById('wardSelect');
+  wardSelect.value = w;
+  wardSelect.dispatchEvent(new Event('change'));
+  document.getElementById('map').scrollIntoView({behavior:'smooth', block:'center'});
+}
+
+function renderWardChart(){
+  const svgNS = 'http://www.w3.org/2000/svg';
+  const chart = document.getElementById('wardChart');
+  const barW=20, gap=8, leftPad=40, topPad=14, chartH=260;
+  const sorted = [...WARD_STATS].sort((a,b)=>a.WARD_NO-b.WARD_NO);
+  const maxTotal = Math.max(...sorted.map(w=>w.Total));
+  const chartWidth = leftPad + sorted.length*(barW+gap) + 20;
+  chart.setAttribute('width', chartWidth);
+  chart.setAttribute('height', chartH+50);
+  chart.setAttribute('viewBox', `0 0 ${chartWidth} ${chartH+50}`);
+
+  [0,0.25,0.5,0.75,1].forEach(f=>{
+    const y = topPad + chartH*(1-f);
+    const line = document.createElementNS(svgNS,'line');
+    line.setAttribute('x1', leftPad-6); line.setAttribute('x2', chartWidth-10);
+    line.setAttribute('y1', y); line.setAttribute('y2', y);
+    line.setAttribute('stroke', '#DDE3EA'); line.setAttribute('stroke-width','1');
+    chart.appendChild(line);
+    const lbl = document.createElementNS(svgNS,'text');
+    lbl.setAttribute('x', leftPad-10); lbl.setAttribute('y', y+3);
+    lbl.setAttribute('text-anchor','end'); lbl.setAttribute('class','bar-label');
+    lbl.textContent = Math.round(maxTotal*f);
+    chart.appendChild(lbl);
+  });
+
+  sorted.forEach((w,i)=>{
+    const x = leftPad + i*(barW+gap);
+    let yCursor = topPad + chartH;
+    const g = document.createElementNS(svgNS,'g');
+    g.style.cursor='pointer';
+    g.addEventListener('click', ()=>jumpToWard(w.WARD_NO));
+    CHART_ORDER.forEach(cat=>{
+      const val = w[cat] || 0;
+      if(val<=0) return;
+      const h = (val/maxTotal)*chartH;
+      yCursor -= h;
+      const rect = document.createElementNS(svgNS,'rect');
+      rect.setAttribute('x', x); rect.setAttribute('y', yCursor);
+      rect.setAttribute('width', barW); rect.setAttribute('height', h);
+      rect.setAttribute('fill', CATS[cat].color); rect.setAttribute('opacity','0.92');
+      g.appendChild(rect);
+    });
+    const lbl = document.createElementNS(svgNS,'text');
+    lbl.setAttribute('x', x+barW/2); lbl.setAttribute('y', topPad+chartH+16);
+    lbl.setAttribute('text-anchor','middle'); lbl.setAttribute('class','bar-label');
+    lbl.textContent = w.WARD_NO;
+    g.appendChild(lbl);
+    chart.appendChild(g);
+  });
+
+  const axisTitle = document.createElementNS(svgNS,'text');
+  axisTitle.setAttribute('x', leftPad); axisTitle.setAttribute('y', chartH+40);
+  axisTitle.setAttribute('class','bar-label'); axisTitle.textContent = 'WARD NO.';
+  chart.appendChild(axisTitle);
+}
+
+let insightsList = [];
+let renderToken = 0;
+
+function renderInsightTabs(insightsData){
+  insightsList = [insightsData.waterGap, insightsData.transformerLoad, insightsData.lightingGap, insightsData.surveyDensity];
+  const insightTabs = document.getElementById('insightTabs');
+  insightsList.forEach((ins,i)=>{
+    const tab = document.createElement('button');
+    tab.className='insight-tab';
+    tab.textContent = ins.flag;
+    tab.addEventListener('click', ()=>showInsight(i));
+    insightTabs.appendChild(tab);
+  });
+  document.getElementById('insightDetail').innerHTML =
+    '<span class="placeholder">Select a finding above to see the detail and the wards behind it.</span>';
+}
+
+function showInsight(i){
+  const insightTabs = document.getElementById('insightTabs');
+  const insightDetail = document.getElementById('insightDetail');
+  [...insightTabs.children].forEach((t,idx)=>t.classList.toggle('active', idx===i));
+  insightDetail.innerHTML = `<div class="insight-loading"><span>Rendering finding</span><div class="bar"></div></div>`;
+  const myToken = ++renderToken;
+  setTimeout(()=>{ if(myToken===renderToken) renderInsightDetail(i); }, 1000);
+}
+
+function renderInsightDetail(i){
+  const ins = insightsList[i];
+  const insightDetail = document.getElementById('insightDetail');
+  const chips = ins.wards.map((w,idx)=>`<span class="ward-chip" data-w="${w}" style="animation-delay:${idx*0.05}s">Ward ${w}</span>`).join('');
+  insightDetail.innerHTML = `
+    <div class="insight-body">
+      <span class="flag">${ins.flag}</span>
+      <h3>${ins.title}</h3>
+      <p>${ins.body}</p>
+      <div class="ward-chips">${chips}</div>
+    </div>`;
+  insightDetail.querySelectorAll('.ward-chip').forEach(chip=>{
+    chip.addEventListener('click', ()=>jumpToWard(parseInt(chip.dataset.w)));
+  });
+}
+
+init();
+</script>
+</body>
+</html>
